@@ -8,10 +8,10 @@ Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite*
 
 | Nome | Usuário GitHub | Módulo principal |
 |------|----------------|------------------|
-| Jhuan | @_____ | núcleo de cálculo (`src/percentil.py`, `src/regras.py`) |
-| _____ | @_____ | importação do SJR para SQLite (`src/sjr.py`) |
-| _____ | @_____ | leitura do XML Lattes (`src/lattes.py`) |
-| _____ | @_____ | interface Streamlit (`app.py`) |
+| Jhuan | @_____ | 
+| _____ | @_____ | 
+| _____ | @_____ | 
+| _____ | @_____ | 
 
 > Primeira tarefa de cada um: abrir um PR preenchendo sua linha nesta tabela.
 
