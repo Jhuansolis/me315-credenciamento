@@ -8,7 +8,7 @@ Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite*
 
 | Nome | Usuário GitHub | Módulo principal |
 |------|----------------|------------------|
-| Jhuan | @_____ | 
+| Jhuan | @jhuansolis | 
 | _____ | @_____ | 
 | _____ | @_____ | 
 | _____ | @_____ | 
