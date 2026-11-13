@@ -89,6 +89,7 @@ mostrar_janela(janela)
 
 st.subheader("Artigos elegíveis (pontuados)")
 por_id = {a.id: a for a in avaliacao.pontuaveis}
+escolhidos = []
 if not por_id:
     st.info("Nenhum artigo do currículo pôde ser pontuado.")
 else:
@@ -104,30 +105,31 @@ else:
         # nova chave quando o arquivo ou a janela mudam: a seleção volta à pré-seleção
         key=f"selecao_{arquivo.name}_{arquivo.size}_{janela.ano_min}",
     )
-    resultado = calcular_nota([por_id[i] for i in ids], PARAMS)
+    escolhidos = [por_id[i] for i in ids]
 
-    if resultado.itens:
-        st.dataframe(
-            pd.DataFrame(
-                {
-                    "Título": i.artigo.titulo or "",
-                    "Periódico": i.artigo.periodico,
-                    "Ano": i.artigo.ano,
-                    "Percentil": numero(i.artigo.percentil) + ("*" if i.artigo.empate_sjr else ""),
-                    f"Conta (≥ {numero(PARAMS.corte_individual)})": "sim" if i.conta else "não",
-                    "Contribuição": numero(i.contribuicao),
-                }
-                for i in resultado.itens
-            ),
-            hide_index=True,
-        )
-        st.caption("* percentil com empate de SJR entre categorias do periódico.")
+resultado = calcular_nota(escolhidos, PARAMS)
+if resultado.itens:
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Título": i.artigo.titulo or "",
+                "Periódico": i.artigo.periodico,
+                "Ano": i.artigo.ano,
+                "Percentil": numero(i.artigo.percentil) + ("*" if i.artigo.empate_sjr else ""),
+                f"Conta (≥ {numero(PARAMS.corte_individual)})": "sim" if i.conta else "não",
+                "Contribuição": numero(i.contribuicao),
+            }
+            for i in resultado.itens
+        ),
+        hide_index=True,
+    )
+    st.caption("* percentil com empate de SJR entre categorias do periódico.")
 
-    st.metric("Nota", numero(resultado.total))
-    if resultado.apto:
-        st.success(f"APTO: nota ≥ {numero(PARAMS.nota_minima)}")
-    else:
-        st.error(f"NÃO APTO: nota < {numero(PARAMS.nota_minima)}")
+st.metric("Nota", numero(resultado.total))
+if resultado.apto:
+    st.success(f"APTO: nota ≥ {numero(PARAMS.nota_minima)}")
+else:
+    st.error(f"NÃO APTO: nota < {numero(PARAMS.nota_minima)}")
 
 with st.expander("Artigos que não entraram"):
     if avaliacao.nao_entraram:
