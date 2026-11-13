@@ -93,9 +93,11 @@ with col1:
     n_parentais = st.number_input("Nº de licenças parentais", min_value=0, step=1)
     meses_medica = st.number_input("Meses de licença médica (total)", min_value=0, step=1)
 with col2:
-    pcd_docente = st.checkbox("Sou pessoa com deficiência (PcD)")
+    # wrap=True: dentro de st.columns o padrão (None) corta o rótulo com "..."
+    pcd_docente = st.checkbox("Sou pessoa com deficiência (PcD)", wrap=True)
     pcd_familiar = st.checkbox(
-        "Tenho cônjuge ou dependente com deficiência ou condição que demande cuidados contínuos"
+        "Tenho cônjuge ou dependente com deficiência ou condição que demande cuidados contínuos",
+        wrap=True,
     )
 declaracao = DeclaracaoArtigoY(
     n_licencas_parentais=int(n_parentais),
