@@ -10,6 +10,7 @@ ela vale 1 quando o periódico NÃO divide o SJR com ninguém (ver
 from __future__ import annotations
 
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,7 +50,10 @@ class Banco:
         if not caminho.is_file():
             raise FileNotFoundError(f"Banco não encontrado: {caminho}")
         # mode=ro: esta ferramenta nunca altera o banco do projeto.
-        # multithread=True (ex.: Streamlit): a conexão é só leitura, então compartilhá-la entre threads é seguro.
+        # multithread=True (ex.: Streamlit): a conexão é compartilhada entre threads. Ser só leitura NÃO basta:
+        # um sqlite3.Connection não aceita consultas simultâneas (InterfaceError ou resultado trocado),
+        # por isso todo acesso ao cursor é serializado por self._trava.
+        self._trava = threading.RLock()
         self._con = sqlite3.connect(
             f"{caminho.resolve().as_uri()}?mode=ro", uri=True, check_same_thread=not multithread
         )
@@ -66,6 +70,7 @@ class Banco:
             self._con.close()
             raise
         self._indice: dict[str, set[int]] | None = None
+        self._anos: tuple[int, int] | None = None
 
     def fechar(self) -> None:
         self._con.close()
@@ -100,24 +105,29 @@ class Banco:
     # -- consultas -------------------------------------------------------
     def anos_com_percentil(self) -> tuple[int, int]:
         """Menor e maior ano com percentil na base (ex.: 2022 e 2025)."""
-        linha = self._con.execute("SELECT MIN(ano) AS a, MAX(ano) AS b FROM v_melhor_percentil").fetchone()
-        if linha["a"] is None:
-            raise ValueError("v_melhor_percentil está vazia: o banco não tem nenhum percentil.")
-        return int(linha["a"]), int(linha["b"])
+        with self._trava:
+            if self._anos is None:  # varredura da visão é cara (~0,5 s): feita uma vez
+                linha = self._con.execute("SELECT MIN(ano) AS a, MAX(ano) AS b FROM v_melhor_percentil").fetchone()
+                if linha["a"] is None:
+                    raise ValueError("v_melhor_percentil está vazia: o banco não tem nenhum percentil.")
+                self._anos = int(linha["a"]), int(linha["b"])
+            return self._anos
 
     def indice_issn(self) -> dict[str, set[int]]:
         """ISSN normalizado -> conjunto de sourceid (carregado uma vez)."""
-        if self._indice is None:
-            indice: dict[str, set[int]] = {}
-            for linha in self._con.execute("SELECT issn, sourceid FROM periodico_issn"):
-                chave = normalizar_issn(linha["issn"])
-                if chave:
-                    indice.setdefault(chave, set()).add(linha["sourceid"])
-            self._indice = indice
-        return self._indice
+        with self._trava:
+            if self._indice is None:
+                indice: dict[str, set[int]] = {}
+                for linha in self._con.execute("SELECT issn, sourceid FROM periodico_issn"):
+                    chave = normalizar_issn(linha["issn"])
+                    if chave:
+                        indice.setdefault(chave, set()).add(linha["sourceid"])
+                self._indice = indice
+            return self._indice
 
     def titulo(self, sourceid: int) -> str | None:
-        linha = self._con.execute("SELECT titulo FROM periodico WHERE sourceid = ?", (sourceid,)).fetchone()
+        with self._trava:
+            linha = self._con.execute("SELECT titulo FROM periodico WHERE sourceid = ?", (sourceid,)).fetchone()
         return linha["titulo"] if linha else None
 
     def nota(self, sourceid: int, ano_min: int, ano_max: int) -> Nota | None:
@@ -139,7 +149,8 @@ class Banco:
             "WHERE v.sourceid = ? AND v.ano BETWEEN ? AND ? "
             "ORDER BY v.percentil DESC, v.ano DESC LIMIT 1"
         )
-        linha = self._con.execute(sql, (sourceid, ano_min, ano_max)).fetchone()
+        with self._trava:
+            linha = self._con.execute(sql, (sourceid, ano_min, ano_max)).fetchone()
         if linha is None:
             return None
         return Nota(

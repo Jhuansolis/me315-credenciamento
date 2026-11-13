@@ -118,3 +118,31 @@ def test_banco_multithread_pode_ser_usado_em_outra_thread(caminho_banco):
         t.start()
         t.join()
         assert resultado["anos"] == b.anos_com_percentil()
+
+
+def test_banco_multithread_consultas_concorrentes_dao_o_mesmo_resultado(caminho_banco):
+    """Sessões simultâneas (Streamlit) compartilham a conexão: sem trava dá InterfaceError ou resultado errado."""
+    with Banco(caminho_banco, multithread=True) as b:
+        ids = [1, 2, 5]
+
+        def consultar():
+            return [(i, b.nota(i, 2022, 2025), b.titulo(i)) for i in ids] + [b.anos_com_percentil()]
+
+        referencia = consultar()
+        problemas = []
+
+        def trabalhador():
+            try:
+                for _ in range(300):
+                    if consultar() != referencia:
+                        problemas.append("resultado diferente da referência")
+                        return
+            except Exception as erro:  # noqa: BLE001 - qualquer falha conta
+                problemas.append(repr(erro))
+
+        threads = [threading.Thread(target=trabalhador) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert problemas == []
