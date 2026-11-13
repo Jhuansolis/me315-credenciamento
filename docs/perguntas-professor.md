@@ -13,16 +13,15 @@ A 1 e a 2 bloqueiam o cálculo central.
 - [ ] 6. A janela termina no ano da solicitação ou no anterior?
 - [ ] 7. Artigos "aceitos"/"no prelo" contam?
 
-## Ampliações (Artigo Y)
-- [ ] 8. Licença médica: como converter a duração em anos?
-- [ ] 9. Duas licenças-parentalidade somam +2 anos cada?
-- [ ] 10. PcD do docente e de dependente: soma duas vezes?
-
 ## Escopo do sistema
 - [ ] 11. O que a comissão precisa ver que o docente não vê?
 - [ ] 12. É preciso guardar histórico de avaliações?
-- [ ] 13. Upload do XML do Lattes é aceitável?
 - [ ] 14. Login individual ou senha única do departamento?
 
 ## Já definido
 SJR 2022–2025; ampliação PcD até 6 anos; benefícios se acumulam sem teto; sistema escolhe os 4 melhores artigos e o docente pode trocar; empate recebe o mesmo percentil.
+- 8. Licença médica: proposta "meses somados, arredondados para cima" (a validar com o professor).
+- 9. Cada licença parental soma +24 meses.
+- 10. PcD conta uma vez (docente e familiar não se somam).
+- 13. Upload do HTML público do Lattes (não XML).
+- PcD é +2 anos (o "até cinco" do case é erro); artigos distintos, podendo ser da mesma revista; duplicatas contam uma vez.

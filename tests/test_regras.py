@@ -2,7 +2,12 @@ import pytest
 
 from src.regras import (
     ArtigoPontuavel,
+    DeclaracaoArtigoY,
+    ParametrosRegras,
+    anos_de_ampliacao,
     calcular_nota,
+    janela_de_artigos,
+    meses_de_ampliacao,
     preselecionar,
     remover_duplicatas,
 )
@@ -73,3 +78,58 @@ def test_duplicata_sem_doi_por_titulo_e_ano():
 def test_sem_doi_e_sem_titulo_nunca_e_duplicata():  # Review Focus 5
     a, b = art(0, 0.9, titulo=None), art(1, 0.9, titulo=None)
     assert remover_duplicatas([a, b]) == ([a, b], [])
+
+
+def test_titulo_normalizado_vazio_nunca_e_duplicata():
+    a = art(0, 0.5, titulo="日本語の論文")
+    b = art(1, 0.5, titulo="!!!")
+    mantidos, duplicados = remover_duplicatas([a, b])
+    assert mantidos == [a, b]
+    assert duplicados == []
+
+
+def test_meses_combinados():
+    assert meses_de_ampliacao(DeclaracaoArtigoY(n_licencas_parentais=1, meses_licenca_medica=5)) == 29
+    assert meses_de_ampliacao(DeclaracaoArtigoY(n_licencas_parentais=2)) == 48
+    assert meses_de_ampliacao(DeclaracaoArtigoY()) == 0
+
+
+def test_pcd_conta_uma_vez_por_padrao():
+    d = DeclaracaoArtigoY(pcd_docente=True, pcd_familiar=True)
+    assert meses_de_ampliacao(d) == 24
+    assert meses_de_ampliacao(d, ParametrosRegras(pcd_conta_uma_vez=False)) == 48
+
+
+def test_negativo_e_erro():
+    with pytest.raises(ValueError):
+        meses_de_ampliacao(DeclaracaoArtigoY(meses_licenca_medica=-1))
+
+
+@pytest.mark.parametrize("modo,meses,anos", [
+    ("cima", 0, 0), ("cima", 1, 1), ("cima", 12, 1), ("cima", 13, 2), ("cima", 29, 3),
+    ("baixo", 29, 2), ("baixo", 11, 0),
+    ("proximo", 18, 2), ("proximo", 17, 1), ("proximo", 29, 2),
+])
+def test_arredondamento(modo, meses, anos):
+    assert anos_de_ampliacao(meses, ParametrosRegras(arredondamento=modo)) == anos
+
+
+def test_janela_sem_ampliacao():
+    j = janela_de_artigos(2022, 2025, DeclaracaoArtigoY())
+    assert (j.ano_min, j.ano_max, j.anos_extras) == (2022, 2025, 0)
+
+
+def test_janela_exemplo_do_spec_com_memoria():
+    j = janela_de_artigos(2022, 2025, DeclaracaoArtigoY(n_licencas_parentais=1, meses_licenca_medica=5))
+    assert (j.ano_min, j.ano_max, j.anos_extras) == (2019, 2025, 3)
+    assert j.memoria == (
+        "1 licença(s) parental(is): +24 meses",
+        "Licença médica: +5 meses",
+        "Total: 29 meses → 3 ano(s) a mais (arredondado para cima)",
+        "Janela de artigos: 2019–2025",
+    )
+
+
+def test_acumulo_sem_teto():
+    j = janela_de_artigos(2022, 2025, DeclaracaoArtigoY(n_licencas_parentais=3, pcd_docente=True, meses_licenca_medica=30))
+    assert j.ano_min == 2022 - 11  # 72 + 24 + 30 = 126 meses → 11 anos
