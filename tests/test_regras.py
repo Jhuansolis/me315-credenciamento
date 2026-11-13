@@ -133,3 +133,10 @@ def test_janela_exemplo_do_spec_com_memoria():
 def test_acumulo_sem_teto():
     j = janela_de_artigos(2022, 2025, DeclaracaoArtigoY(n_licencas_parentais=3, pcd_docente=True, meses_licenca_medica=30))
     assert j.ano_min == 2022 - 11  # 72 + 24 + 30 = 126 meses → 11 anos
+
+
+def test_arredondamento_desconhecido_e_erro_na_criacao():
+    from src.regras import ParametrosRegras
+
+    with pytest.raises(ValueError, match="Arredondamento"):
+        ParametrosRegras(arredondamento="teto")

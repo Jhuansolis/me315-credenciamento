@@ -29,7 +29,8 @@ streamlit run app.py
 Testes:
 
 ```bash
-pytest
+python -m pytest tests                  # raiz: motor de regras, integração e app
+cd lattes_rank && python -m pytest      # etapa 2: parser e banco
 ```
 
 ## Estrutura

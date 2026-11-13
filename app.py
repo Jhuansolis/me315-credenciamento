@@ -2,7 +2,9 @@ import sys
 from pathlib import Path
 
 # O Streamlit Cloud (e o AppTest) nem sempre põem a pasta do app no sys.path.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_RAIZ = str(Path(__file__).resolve().parent)
+if _RAIZ not in sys.path:
+    sys.path.insert(0, _RAIZ)
 
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
@@ -27,8 +29,19 @@ def banco_scimago():
     return abrir_banco()
 
 
-def numero(valor: float, casas: int = 2) -> str:
-    """Formata com vírgula decimal (padrão brasileiro)."""
+@st.cache_data(show_spinner="Lendo o currículo...")
+def curriculo_do_arquivo(dados: bytes, nome: str):
+    # o parse do HTML leva ~1 s: a chave do cache são os bytes do arquivo
+    return ler_html(dados, nome)
+
+
+def numero(valor: float, casas: int = 4) -> str:
+    """Formata com vírgula decimal (padrão brasileiro).
+
+    4 casas por padrão: percentil, contribuição e nota (0–1) têm exatamente 4 casas
+    (vêm de 0–100 com 2); arredondar para 2 mostraria, por ex., 0,25 com "Conta: não".
+    Os limites (0,25 e 1,25) são formatados com 2 casas.
+    """
     return f"{valor:.{casas}f}".replace(".", ",")
 
 
@@ -73,7 +86,7 @@ if arquivo is None:
     st.info("Envie o HTML do currículo Lattes para ver os artigos e a nota.")
     st.stop()
 
-curriculo = ler_html(arquivo.getvalue(), arquivo.name)
+curriculo = curriculo_do_arquivo(arquivo.getvalue(), arquivo.name)
 if curriculo.nome:
     st.markdown(f"**{curriculo.nome}**")
 if curriculo.id_lattes:
@@ -116,20 +129,21 @@ if resultado.itens:
                 "Periódico": i.artigo.periodico,
                 "Ano": i.artigo.ano,
                 "Percentil": numero(i.artigo.percentil) + ("*" if i.artigo.empate_sjr else ""),
-                f"Conta (≥ {numero(PARAMS.corte_individual)})": "sim" if i.conta else "não",
+                f"Conta (≥ {numero(PARAMS.corte_individual, 2)})": "sim" if i.conta else "não",
                 "Contribuição": numero(i.contribuicao),
             }
             for i in resultado.itens
         ),
         hide_index=True,
     )
-    st.caption("* percentil com empate de SJR entre categorias do periódico.")
+    if any(i.artigo.empate_sjr for i in resultado.itens):
+        st.caption("* percentil com empate de SJR entre categorias do periódico.")
 
 st.metric("Nota", numero(resultado.total))
 if resultado.apto:
-    st.success(f"APTO: nota ≥ {numero(PARAMS.nota_minima)}")
+    st.success(f"APTO: nota ≥ {numero(PARAMS.nota_minima, 2)}")
 else:
-    st.error(f"NÃO APTO: nota < {numero(PARAMS.nota_minima)}")
+    st.error(f"NÃO APTO: nota < {numero(PARAMS.nota_minima, 2)}")
 
 with st.expander("Artigos que não entraram"):
     if avaliacao.nao_entraram:
@@ -146,4 +160,7 @@ with st.expander("Artigos que não entraram"):
             hide_index=True,
         )
     else:
-        st.write("Todos os artigos do currículo entraram.")
+        if curriculo.artigos:
+            st.write("Nenhum artigo ficou de fora.")
+        else:
+            st.write("Nenhum artigo encontrado no arquivo.")

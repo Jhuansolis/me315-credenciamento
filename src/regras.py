@@ -32,6 +32,12 @@ class ParametrosRegras:
     corte_individual: float = 0.25
     nota_minima: float = 1.25
 
+    def __post_init__(self) -> None:
+        if self.arredondamento not in ("cima", "baixo", "proximo"):
+            raise ValueError(
+                f"Arredondamento desconhecido: {self.arredondamento!r} (use 'cima', 'baixo' ou 'proximo')."
+            )
+
 
 PARAMETROS_PADRAO = ParametrosRegras()
 
