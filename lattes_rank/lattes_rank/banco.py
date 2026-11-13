@@ -44,12 +44,15 @@ class Nota:
 
 
 class Banco:
-    def __init__(self, caminho: str | Path):
+    def __init__(self, caminho: str | Path, multithread: bool = False):
         caminho = Path(caminho)
         if not caminho.is_file():
             raise FileNotFoundError(f"Banco não encontrado: {caminho}")
         # mode=ro: esta ferramenta nunca altera o banco do projeto.
-        self._con = sqlite3.connect(f"{caminho.resolve().as_uri()}?mode=ro", uri=True)
+        # multithread=True (ex.: Streamlit): a conexão é só leitura, então compartilhá-la entre threads é seguro.
+        self._con = sqlite3.connect(
+            f"{caminho.resolve().as_uri()}?mode=ro", uri=True, check_same_thread=not multithread
+        )
         self._con.row_factory = sqlite3.Row
         try:
             self._conferir_esquema()

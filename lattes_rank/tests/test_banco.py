@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 
 import pytest
 
@@ -108,3 +109,12 @@ def test_funciona_sem_a_coluna_n_empatados(tmp_path):
     with Banco(caminho) as b:
         nota = b.nota(2, 2022, 2025)
         assert nota.percentil == 97.0 and nota.n_empatados is None and not nota.empate_sjr
+
+
+def test_banco_multithread_pode_ser_usado_em_outra_thread(caminho_banco):
+    with Banco(caminho_banco, multithread=True) as b:
+        resultado = {}
+        t = threading.Thread(target=lambda: resultado.update(anos=b.anos_com_percentil()))
+        t.start()
+        t.join()
+        assert resultado["anos"] == b.anos_com_percentil()
