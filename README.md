@@ -65,7 +65,8 @@ Resumo; o detalhe e as decisões estão em
 1. Fazer o merge das branches na `main` (o banco `scimago_etl/scimago.db` precisa estar na `main`).
 2. Em share.streamlit.io, entrar com o GitHub do dono do repositório, clicar em *Create app*,
    escolher o repositório `Jhuansolis/me315-credenciamento`, a branch `main` e o arquivo `app.py`.
-3. Em *Advanced settings*, escolher Python 3.12.
+3. Em *Advanced settings*, escolher Python 3.12. O app pede uma senha antes do cálculo: sem
+   configuração ela é `1234`; para trocar, coloque `senha = "..."` em *Secrets*.
 4. Abrir o link gerado, enviar o HTML da fixture (`lattes_rank/tests/fixtures/artigos_completos.html`)
    e conferir a nota.
 
