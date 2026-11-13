@@ -1,6 +1,6 @@
 # ME315 — Sistema de Credenciamento Docente (PPGE)
 
-Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite** que lê o currículo Lattes (XML) de um docente, cruza os artigos com o SJR (Scimago) de 2022–2025 e calcula se ele atende às regras de credenciamento.
+Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite** que lê o currículo Lattes (HTML) de um docente, cruza os artigos com o SJR (Scimago) de 2022–2025 e calcula se ele atende às regras de credenciamento.
 
 **Entrega:** 3 de dezembro de 2026
 
@@ -35,19 +35,38 @@ pytest
 ## Estrutura
 
 ```
-app.py              interface Streamlit
+app.py                interface Streamlit (upload do Lattes, Artigo Y, seleção e nota)
 src/
-  db.py             conexão e criação das tabelas SQLite
-  sjr.py            importa os CSVs do Scimago para o banco
-  lattes.py         extrai os artigos do XML do Lattes
-  percentil.py      percentil de cada revista por área/ano
-  regras.py         janela, ampliações e escolha dos 4 melhores artigos
-sql/schema.sql      definição das tabelas
-data/               CSVs brutos do SJR (NÃO versionados)
-tests/              testes com pytest
-docs/               decisões e perguntas ao professor
-lattes_rank/        etapa 2: HTML do Lattes -> 4 periódicos de maior percentil
+  regras.py           motor de regras: nota (Artigo X), janela de artigos (Artigo Y), pré-seleção
+  integracao.py       liga o HTML do Lattes e o banco SCImago ao motor de regras
+sql/schema.sql        definição das tabelas
+scimago_etl/          etapa 1: CSVs do SJR -> banco SQLite (scimago.db é versionado)
+lattes_rank/          etapa 2: HTML do Lattes -> artigos com percentil SJR
+tests/                testes com pytest
+docs/                 decisões, perguntas ao professor e especificações
 ```
+
+## Regras do credenciamento
+
+Resumo; o detalhe e as decisões estão em
+[docs/superpowers/specs/2026-11-13-motor-regras-streamlit-design.md](docs/superpowers/specs/2026-11-13-motor-regras-streamlit-design.md).
+
+- **Artigo X (nota):** cada artigo vale o maior percentil SJR do seu periódico em 2022–2025
+  (0 a 1). Contam até 4 artigos distintos; só soma quem tem percentil ≥ 0,25. Apto se a nota
+  for ≥ 1,25. O sistema pré-seleciona os 4 melhores e o usuário pode trocar.
+- **Artigo Y (ampliação da janela de artigos):** o ano inicial recua conforme o declarado:
+  +24 meses por licença parental, +24 meses (uma única vez) para PcD, e + os meses de licença
+  médica. Somam-se os meses e arredonda-se para cima em anos. A nota do periódico não muda.
+- Artigos duplicados no Lattes contam uma vez. Nenhum dado do usuário é gravado.
+
+## Deploy no Streamlit Cloud
+
+1. Fazer o merge das branches na `main` (o banco `scimago_etl/scimago.db` precisa estar na `main`).
+2. Em share.streamlit.io, entrar com o GitHub do dono do repositório, clicar em *Create app*,
+   escolher o repositório `Jhuansolis/me315-credenciamento`, a branch `main` e o arquivo `app.py`.
+3. Em *Advanced settings*, escolher Python 3.12.
+4. Abrir o link gerado, enviar o HTML da fixture (`lattes_rank/tests/fixtures/artigos_completos.html`)
+   e conferir a nota.
 
 ## Etapa 2 — ranking de periódicos a partir do Lattes (`lattes_rank/`)
 
