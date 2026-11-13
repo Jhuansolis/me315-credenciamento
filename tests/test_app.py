@@ -7,7 +7,16 @@ FIXTURE = Path(__file__).resolve().parent.parent / "lattes_rank" / "tests" / "fi
 
 def _app_com_arquivo(caminho, monkeypatch):
     monkeypatch.setenv("ME315_HTML_FALSO", str(caminho))
-    return AppTest.from_file("_app_com_upload.py", default_timeout=60).run()
+    return _autenticado(AppTest.from_file("_app_com_upload.py", default_timeout=60)).run()
+
+
+def _autenticado(at):
+    at.session_state["autenticado"] = True  # pula a tela de senha
+    return at
+
+
+def _app():
+    return AppTest.from_file("../app.py", default_timeout=30)  # caminho relativo a este arquivo de teste
 
 
 def _textos(at):
@@ -15,14 +24,14 @@ def _textos(at):
 
 
 def test_app_carrega_sem_erro():
-    at = AppTest.from_file("../app.py", default_timeout=30).run()  # caminho relativo a este arquivo de teste
+    at = _autenticado(_app()).run()
     assert not at.exception
     assert at.title[0].value == "ME315 — Credenciamento Docente"
     assert len(at.number_input) == 2 and len(at.checkbox) == 2
 
 
 def test_app_mudar_licencas_sem_arquivo_amplia_a_janela():
-    at = AppTest.from_file("../app.py", default_timeout=30).run()
+    at = _autenticado(_app()).run()
     at.number_input[0].set_value(1).run()
     assert not at.exception
     assert at.number_input[0].value == 1
@@ -62,3 +71,27 @@ def test_notas_mostram_4_casas_para_nao_contradizer_o_veredito(monkeypatch):
     at = _app_com_arquivo(FIXTURE, monkeypatch)
     nota = at.metric[0].value
     assert len(nota.split(",")[1]) == 4
+
+
+def test_sem_senha_so_aparece_a_tela_de_senha():
+    at = _app().run()
+    assert not at.exception
+    assert len(at.text_input) == 1 and not at.number_input
+
+
+def test_senha_errada_mostra_erro_e_nao_libera():
+    at = _app().run()
+    at.text_input[0].input("0000")
+    at.button[0].click().run()
+    assert not at.exception
+    assert [e.value for e in at.error] == ["Senha incorreta."]
+    assert not at.number_input
+
+
+def test_senha_1234_libera_o_calculo():
+    at = _app().run()
+    at.text_input[0].input("1234")
+    at.button[0].click().run()
+    assert not at.exception
+    assert not at.error
+    assert len(at.number_input) == 2 and len(at.checkbox) == 2

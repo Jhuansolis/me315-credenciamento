@@ -6,6 +6,8 @@ _RAIZ = str(Path(__file__).resolve().parent)
 if _RAIZ not in sys.path:
     sys.path.insert(0, _RAIZ)
 
+import hmac  # noqa: E402
+
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
@@ -22,6 +24,35 @@ TITULO = "ME315 — Credenciamento Docente"
 PARAMS = PARAMETROS_PADRAO
 
 st.set_page_config(page_title=TITULO)
+
+SENHA_PADRAO = "1234"
+
+
+def senha_esperada() -> str:
+    """Senha dos secrets do Streamlit (chave `senha`); sem secrets configurados, 1234."""
+    try:
+        return str(st.secrets.get("senha", SENHA_PADRAO))
+    except FileNotFoundError:  # nenhum secrets.toml (rodando local)
+        return SENHA_PADRAO
+
+
+def exigir_senha() -> None:
+    """Mostra a tela de senha e para o app até a senha certa ser digitada."""
+    if st.session_state.get("autenticado"):
+        return
+    st.title(TITULO)
+    with st.form("login"):
+        senha = st.text_input("Senha do departamento", type="password")
+        entrar = st.form_submit_button("Entrar")
+    if entrar:
+        if hmac.compare_digest(senha.encode(), senha_esperada().encode()):
+            st.session_state["autenticado"] = True
+            st.rerun()
+        st.error("Senha incorreta.")
+    st.stop()
+
+
+exigir_senha()
 
 
 @st.cache_resource
