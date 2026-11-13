@@ -11,6 +11,8 @@ data/*
 *.db
 *.sqlite
 *.sqlite3
+# exceção: banco da etapa 1 vai junto para o deploy (Streamlit Cloud)
+!scimago_etl/scimago.db
 
 # Segredos
 .streamlit/secrets.toml

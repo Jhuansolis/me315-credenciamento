@@ -32,7 +32,7 @@ A `main` é a versão oficial e está protegida. **Todo trabalho entra por Pull 
 - **PRs pequenos:** um PR resolve uma coisa só.
 - **Revisão de verdade:** o PR deve pedir algo concreto, ex.: "rode `pytest tests/test_percentil.py` e confira se dá 0,75".
 - **Cada um é dono de um módulo.** Os módulos conversam pelas funções descritas nos docstrings ("contratos"). Mudou um contrato? Avise no PR.
-- **Fora do repositório:** CSVs grandes (`data/`), banco `.db`, senhas. Senhas vão nos *secrets* do Streamlit Cloud.
+- **Fora do repositório:** CSVs grandes (`data/`), outros bancos `.db` (exceção: `scimago_etl/scimago.db`, versionado para o deploy; ao regenerá-lo, commite junto com a mudança do ETL), senhas. Senhas vão nos *secrets* do Streamlit Cloud.
 - **Nomes de branch:** curtos, em minúsculas, com hífen (`leitura-lattes`, `tela-upload`).
 
 ## Conflitos
