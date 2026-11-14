@@ -3,10 +3,11 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 FIXTURE = Path(__file__).resolve().parent.parent / "lattes_rank" / "tests" / "fixtures" / "artigos_completos.html"
+FIXTURE_XML = FIXTURE.with_suffix(".xml")
 
 
 def _app_com_arquivo(caminho, monkeypatch):
-    monkeypatch.setenv("ME315_HTML_FALSO", str(caminho))
+    monkeypatch.setenv("ME315_ARQUIVO_FALSO", str(caminho))
     return _autenticado(AppTest.from_file("_app_com_upload.py", default_timeout=60)).run()
 
 
@@ -95,3 +96,25 @@ def test_senha_1234_libera_o_calculo():
     assert not at.exception
     assert not at.error
     assert len(at.number_input) == 2 and len(at.checkbox) == 2
+
+
+def test_upload_do_xml_da_apto_e_mostra_lembrete(monkeypatch):
+    at = _app_com_arquivo(FIXTURE_XML, monkeypatch)
+    assert not at.exception
+    assert [s.value for s in at.success] == ["APTO: nota ≥ 1,25"]
+    assert any("PATERNIDADE" in i.value for i in at.info)
+    assert at.number_input[0].value == 0  # o lembrete não preenche o campo
+
+
+def test_upload_de_xml_invalido_mostra_erro_sem_excecao(tmp_path, monkeypatch):
+    ruim = tmp_path / "ruim.xml"
+    ruim.write_bytes(b'<?xml version="1.0"?><outra-coisa/>')
+    at = _app_com_arquivo(ruim, monkeypatch)
+    assert not at.exception
+    assert [e.value for e in at.error] == ["O XML enviado não é um currículo Lattes."]
+    assert not at.metric
+
+
+def test_upload_do_html_nao_mostra_lembrete(monkeypatch):
+    at = _app_com_arquivo(FIXTURE, monkeypatch)
+    assert not any("licença" in i.value for i in at.info)

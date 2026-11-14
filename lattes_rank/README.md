@@ -1,8 +1,7 @@
 # lattes_rank — periódicos de maior percentil de um docente (etapa 2)
 
 Lê o Currículo Lattes de um docente (HTML **público** ou **XML** exportado por ele), coleta
-os periódicos em que
-ele publicou artigos completos e devolve os **4 periódicos de maior percentil SJR**
+os periódicos em que ele publicou artigos completos e devolve os **4 periódicos de maior percentil SJR**
 segundo o banco SQLite da etapa 1 (`scimago_etl`, anos 2022–2025).
 O banco é aberto **somente para leitura**; nada é gravado nele.
 
