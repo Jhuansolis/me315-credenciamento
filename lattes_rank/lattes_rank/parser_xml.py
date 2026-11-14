@@ -50,13 +50,17 @@ def _artigo(sequencia: int, elemento: ET.Element, avisos: list[str]) -> Artigo:
 
 
 def interpretar_xml(dados: bytes, arquivo: str = "<memória>") -> Curriculo:
-    # O Lattes não usa DTD nem entidades; recusar evita expansão de entidades maliciosas.
+    # O Lattes exporta em ISO-8859-1. Bytes nulos indicam UTF-16/32, em que a busca abaixo
+    # não acharia "<!DOCTYPE"; recusar os dois casos evita expansão de entidades maliciosas.
+    if b"\x00" in dados:
+        raise ArquivoInvalido("A codificação do XML não é suportada (use o XML exportado pelo Lattes).")
     if b"<!DOCTYPE" in dados or b"<!ENTITY" in dados:
         raise ArquivoInvalido("O XML enviado não é um currículo Lattes.")
     try:
         # bytes: o ElementTree respeita o encoding declarado (ISO-8859-1 no Lattes)
         raiz = ET.fromstring(dados)
-    except ET.ParseError as erro:
+    except (ET.ParseError, LookupError, ValueError) as erro:
+        # LookupError: encoding desconhecido; ValueError: encoding multibyte (ex.: Shift_JIS)
         raise ArquivoInvalido("O arquivo XML está corrompido ou incompleto.") from erro
     if raiz.tag != "CURRICULO-VITAE":
         raise ArquivoInvalido("O XML enviado não é um currículo Lattes.")

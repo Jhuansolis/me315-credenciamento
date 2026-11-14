@@ -62,3 +62,37 @@ def test_ler_arquivo_do_disco():
     cv = ler_arquivo(FIXTURES / "artigos_completos.xml")
     assert len(cv.artigos) == 17
     assert cv.arquivo.endswith("artigos_completos.xml")
+
+
+def _zip_com_flag_de_criptografia(dados: bytes) -> bytes:
+    bruto = bytearray(_zip({"curriculo.xml": dados}))
+    # bit 0 das "general purpose flags": no cabeçalho local (offset 6) e no central (offset 8)
+    bruto[6] |= 1
+    central = bruto.find(b"PK\x01\x02")
+    bruto[central + 8] |= 1
+    return bytes(bruto)
+
+
+def _zip_deflate_corrompido() -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as arquivo_zip:
+        arquivo_zip.writestr("curriculo.xml", XML)
+    bruto = bytearray(buffer.getvalue())
+    inicio = 30 + len("curriculo.xml")  # dados comprimidos logo após o cabeçalho local
+    bruto[inicio : inicio + 40] = b"\xff" * 40
+    return bytes(bruto)
+
+
+@pytest.mark.parametrize("dados", [_zip_com_flag_de_criptografia(XML), _zip_deflate_corrompido()])
+def test_zip_criptografado_ou_corrompido_levanta(dados):
+    with pytest.raises(ArquivoInvalido):
+        ler_bytes(dados, "cv.zip")
+
+
+def test_zip_com_xml_utf16_e_entidade_levanta():
+    xml = (
+        '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY a "AAAA">]>'
+        '<CURRICULO-VITAE><DADOS-GERAIS NOME-COMPLETO="&a;"/></CURRICULO-VITAE>'
+    ).encode("utf-16")
+    with pytest.raises(ArquivoInvalido):
+        ler_bytes(_zip({"curriculo.xml": xml}), "cv.zip")

@@ -70,8 +70,17 @@ def test_artigo_sem_issn_e_sem_ano_vira_none_com_aviso():
         b"<CURRICULO-VITAE><nao-fecha>",
         b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaa">]><CURRICULO-VITAE/>',
         b'<?xml version="1.0"?><outra-coisa/>',
+        # UTF-16: a busca por bytes "<!DOCTYPE" não acha a declaração
+        '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY a "AAAA">]>'
+        '<CURRICULO-VITAE><DADOS-GERAIS NOME-COMPLETO="&a;"/></CURRICULO-VITAE>'.encode("utf-16"),
+        b'<?xml version="1.0" encoding="foo-bar"?><CURRICULO-VITAE/>',
+        b'<?xml version="1.0" encoding="Shift_JIS"?><CURRICULO-VITAE/>',
     ],
 )
 def test_xml_invalido_levanta_arquivo_invalido(dados):
     with pytest.raises(ArquivoInvalido):
         interpretar_xml(dados)
+
+
+def test_fixture_nao_tem_data_de_nascimento():
+    assert b"DATA-NASCIMENTO" not in FIXTURE_XML.read_bytes()

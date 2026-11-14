@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+import zlib
 from pathlib import Path
 
 from .parser import Curriculo, decodificar_html, interpretar_html
@@ -31,8 +32,12 @@ def _xml_do_zip(dados: bytes) -> bytes:
                 raise ArquivoInvalido("O XML dentro do ZIP é grande demais.")
             with arquivo_zip.open(membro) as fluxo:
                 conteudo = fluxo.read(LIMITE_DESCOMPACTADO + 1)
-    except (zipfile.BadZipFile, EOFError) as erro:
+    except ArquivoInvalido:
+        raise
+    except (zipfile.BadZipFile, EOFError, zlib.error, ValueError) as erro:
         raise ArquivoInvalido("O arquivo ZIP está corrompido.") from erro
+    except (RuntimeError, NotImplementedError) as erro:  # criptografado ou compressão sem suporte
+        raise ArquivoInvalido("O ZIP está protegido por senha ou usa compressão não suportada.") from erro
     if len(conteudo) > LIMITE_DESCOMPACTADO:  # tamanho declarado no ZIP pode mentir
         raise ArquivoInvalido("O XML dentro do ZIP é grande demais.")
     return conteudo
