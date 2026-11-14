@@ -1,13 +1,25 @@
 # lattes_rank — periódicos de maior percentil de um docente (etapa 2)
 
-Lê o HTML **público** do Currículo Lattes de um docente, coleta os periódicos em que
+Lê o Currículo Lattes de um docente (HTML **público** ou **XML** exportado por ele), coleta
+os periódicos em que
 ele publicou artigos completos e devolve os **4 periódicos de maior percentil SJR**
 segundo o banco SQLite da etapa 1 (`scimago_etl`, anos 2022–2025).
 O banco é aberto **somente para leitura**; nada é gravado nele.
 
-## Como obter o HTML do Lattes
+## Como obter o currículo
 
-O XML do Lattes só pode ser baixado pelo próprio pesquisador. Por isso a ferramenta usa a página pública:
+A ferramenta aceita dois formatos, detectados pelo conteúdo do arquivo (não pela extensão).
+
+### XML (exportado pelo próprio docente)
+
+O XML só pode ser baixado pelo próprio pesquisador, na área logada da Plataforma Lattes. Serve
+o `.xml` ou o `.zip` que o contém (o ZIP deve ter exatamente um `.xml`). É o formato mais
+confiável: ISSN, ano e DOI vêm em campos próprios. O leitor (`parser_xml.py`) lê só o
+cabeçalho (ID, nome, data de atualização), as licenças, o campo PcD e os artigos publicados;
+CPF, documentos, filiação e endereço são ignorados. XML com `<!DOCTYPE`/`<!ENTITY` é recusado.
+
+### HTML (página pública)
+
 
 1. Abra `http://lattes.cnpq.br/<ID de 16 dígitos>` e resolva o captcha.
 2. Na página do currículo, use **Ctrl+S** e escolha "Página da Web, somente HTML" ou "completa".
@@ -30,7 +42,7 @@ python -m lattes_rank pasta_com_htmls/ --db scimago.db --top 4 --json resultado.
 python -m pytest -q
 ```
 
-- `ENTRADA`: um arquivo `.html`/`.htm` ou uma pasta com vários. Cada currículo vira um relatório.
+- `ENTRADA`: um arquivo `.html`/`.htm`/`.xml`/`.zip` ou uma pasta com vários. Cada currículo vira um relatório.
 - `--top N`: quantos periódicos listar (padrão 4).
 - `--json`: grava o resultado completo, com o status e o motivo de cada artigo.
 - Erros como arquivo ou banco inexistente, ou banco com esquema errado, saem como
@@ -72,6 +84,8 @@ python -m pytest -q
 |---|---|
 | `issn.py` | Normalização, formato e dígito verificador |
 | `parser.py` | HTML do Lattes → `Curriculo` / `Artigo` (BeautifulSoup, `html.parser`) |
+| `parser_xml.py` | XML do Lattes → o mesmo `Curriculo` / `Artigo`, mais licenças e PcD |
+| `entrada.py` | Entrada única: detecta HTML, XML ou ZIP pelo conteúdo |
 | `banco.py` | Leitura do SQLite (`mode=ro`), conferência do esquema e `Nota` de cada periódico |
 | `ranking.py` | Política de anos, status de cada artigo e ranking com desempates |
 | `relatorio.py` | Relatório em texto e dicionário para JSON |
@@ -80,7 +94,9 @@ python -m pytest -q
 Os testes usam um banco **fictício** (`tests/banco_ficticio.py`), criado a partir do próprio
 `scimago_etl/scimago_etl/schema.sql`. Uma mudança no esquema da etapa 1 quebra os testes daqui,
 e isso é intencional. A fixture `tests/fixtures/artigos_completos.html` é a seção de artigos de
-um currículo público real, com 17 artigos.
+um currículo público real, com 17 artigos. A fixture `tests/fixtures/artigos_completos.xml` traz os
+mesmos 17 artigos com cabeçalho **fictício** (sem nenhum dado pessoal); os testes exigem que HTML e
+XML deem o mesmo resultado.
 
 ## Pendências (não decididas; deixadas configuráveis ou documentadas)
 
