@@ -1,4 +1,4 @@
-"""Ponte entre a etapa 2 (lattes_rank: parser + banco SCImago) e o motor de regras.
+"""Ponte entre a etapa 2 (lattes_rank: leitura do Lattes + banco SCImago) e o motor de regras.
 
 Converte os artigos do currículo em ``ArtigoPontuavel`` (percentil 0–1) e explica
 por que cada artigo que não entrou ficou de fora.
@@ -17,7 +17,8 @@ if _SUBPROJETO not in sys.path:
     sys.path.insert(0, _SUBPROJETO)
 
 from lattes_rank.banco import Banco  # noqa: E402
-from lattes_rank.parser import Curriculo, decodificar_html, interpretar_html  # noqa: E402
+from lattes_rank.entrada import ArquivoInvalido, ler_bytes  # noqa: E402
+from lattes_rank.parser import Curriculo  # noqa: E402
 from lattes_rank.ranking import (  # noqa: E402
     PONTUADO,
     classificar_artigos,
@@ -59,8 +60,30 @@ def abrir_banco(caminho: Path = CAMINHO_BANCO) -> Banco:
     return Banco(caminho, multithread=True)
 
 
-def ler_html(dados: bytes, nome_arquivo: str) -> Curriculo:
-    return interpretar_html(decodificar_html(dados), arquivo=nome_arquivo)
+__all__ = ["ArquivoInvalido", "abrir_banco", "avaliar", "lembrete_artigo_y", "ler_arquivo"]
+
+
+def ler_arquivo(dados: bytes, nome_arquivo: str) -> Curriculo:
+    """Currículo Lattes em HTML, XML ou ZIP; levanta ArquivoInvalido se não der para ler."""
+    return ler_bytes(dados, arquivo=nome_arquivo)
+
+
+def lembrete_artigo_y(curriculo: Curriculo) -> str | None:
+    """Texto do lembrete com as licenças e o PcD registrados no XML (None se não há nada)."""
+    pcd = curriculo.pcd if curriculo.pcd and curriculo.pcd.upper() not in ("NAO", "NÃO") else None
+    if not curriculo.licencas and pcd is None:
+        return None
+    partes = []
+    if curriculo.licencas:
+        n = len(curriculo.licencas)
+        lista = "; ".join(f"{l.tipo} de {l.inicio or '?'} a {l.fim or '?'}" for l in curriculo.licencas)
+        partes.append(f"{n} licença{'s' if n > 1 else ''} ({lista})")
+    if pcd is not None:
+        partes.append(f"PcD: {pcd}")
+    return (
+        "O XML do Lattes registra: " + ". ".join(partes) + ".\n\n"
+        "Confira e preencha os campos abaixo; o sistema não decide se cada licença conta."
+    )
 
 
 def avaliar(

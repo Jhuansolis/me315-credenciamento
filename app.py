@@ -11,7 +11,13 @@ import hmac  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from src.integracao import abrir_banco, avaliar, ler_html  # noqa: E402
+from src.integracao import (  # noqa: E402
+    ArquivoInvalido,
+    abrir_banco,
+    avaliar,
+    lembrete_artigo_y,
+    ler_arquivo,
+)
 from src.regras import (  # noqa: E402
     PARAMETROS_PADRAO,
     DeclaracaoArtigoY,
@@ -62,8 +68,8 @@ def banco_scimago():
 
 @st.cache_data(show_spinner="Lendo o currículo...")
 def curriculo_do_arquivo(dados: bytes, nome: str):
-    # o parse do HTML leva ~1 s: a chave do cache são os bytes do arquivo
-    return ler_html(dados, nome)
+    # o parse leva até ~1 s (HTML): a chave do cache são os bytes do arquivo
+    return ler_arquivo(dados, nome)
 
 
 def numero(valor: float, casas: int = 4) -> str:
@@ -80,14 +86,26 @@ st.title(TITULO)
 banco = banco_scimago()
 
 arquivo = st.file_uploader(
-    "Envie o HTML do Lattes (Ctrl+S na página do currículo)", type=["html", "htm"]
+    "Envie o currículo Lattes (HTML ou XML)", type=["html", "htm", "xml", "zip"]
 )
 st.caption(
-    "Abra o currículo em lattes.cnpq.br, resolva o captcha e salve a página "
-    "(Ctrl+S, \"Página da Web, somente HTML\"). Nada do que você enviar é gravado."
+    "Duas formas: abra o currículo em lattes.cnpq.br, resolva o captcha e salve a página "
+    "(Ctrl+S, \"Página da Web, somente HTML\"); ou exporte o XML do seu próprio currículo "
+    "na Plataforma Lattes (vale o .xml ou o .zip). Nada do que você enviar é gravado."
 )
 
+curriculo = None
+if arquivo is not None:
+    try:
+        curriculo = curriculo_do_arquivo(arquivo.getvalue(), arquivo.name)
+    except ArquivoInvalido as erro:
+        st.error(str(erro))
+        st.stop()
+
 st.subheader("Artigo Y — ampliação do período (opcional)")
+lembrete = lembrete_artigo_y(curriculo) if curriculo is not None else None
+if lembrete:
+    st.info(lembrete)
 col1, col2 = st.columns(2)
 with col1:
     n_parentais = st.number_input("Nº de licenças parentais", min_value=0, step=1)
@@ -114,12 +132,11 @@ def mostrar_janela(janela) -> None:
             st.write(linha)
 
 
-if arquivo is None:
+if curriculo is None:
     mostrar_janela(janela_de_artigos(*banco.anos_com_percentil(), declaracao, PARAMS))
-    st.info("Envie o HTML do currículo Lattes para ver os artigos e a nota.")
+    st.info("Envie o currículo Lattes (HTML ou XML) para ver os artigos e a nota.")
     st.stop()
 
-curriculo = curriculo_do_arquivo(arquivo.getvalue(), arquivo.name)
 if curriculo.nome:
     st.markdown(f"**{curriculo.nome}**")
 if curriculo.id_lattes:

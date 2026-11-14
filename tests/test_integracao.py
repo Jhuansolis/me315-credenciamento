@@ -4,13 +4,14 @@ from pathlib import Path
 import pytest
 
 import src.integracao  # noqa: F401  (põe lattes_rank/ no sys.path)
-from src.integracao import RAIZ, abrir_banco, avaliar, ler_html
+from src.integracao import RAIZ, abrir_banco, avaliar, lembrete_artigo_y, ler_arquivo
 from src.regras import DeclaracaoArtigoY
 
 sys.path.insert(0, str(RAIZ / "lattes_rank" / "tests"))
 from banco_ficticio import criar_banco  # noqa: E402
 
 FIXTURE = RAIZ / "lattes_rank" / "tests" / "fixtures" / "artigos_completos.html"
+FIXTURE_XML = FIXTURE.with_suffix(".xml")
 
 
 @pytest.fixture()
@@ -21,7 +22,7 @@ def banco(tmp_path):
 
 
 def curriculo_fixture():
-    return ler_html(FIXTURE.read_bytes(), "fixture")
+    return ler_arquivo(FIXTURE.read_bytes(), "fixture")
 
 
 def test_avaliar_fixture_sem_ampliacao(banco):
@@ -58,7 +59,44 @@ def test_duplicata_vai_para_nao_entraram(banco):
 
 
 def test_html_que_nao_e_lattes(banco):
-    cur = ler_html(b"<html><body>oi</body></html>", "x.html")
+    cur = ler_arquivo(b"<html><body>oi</body></html>", "x.html")
     assert cur.artigos == [] and cur.avisos
     av = avaliar(cur, banco, DeclaracaoArtigoY())
     assert av.pontuaveis == [] and av.nao_entraram == []
+
+
+def test_xml_e_html_dao_a_mesma_avaliacao(banco):
+    h = avaliar(ler_arquivo(FIXTURE.read_bytes(), "a.html"), banco, DeclaracaoArtigoY())
+    x = avaliar(ler_arquivo(FIXTURE_XML.read_bytes(), "a.xml"), banco, DeclaracaoArtigoY())
+
+    def chave(a):
+        return (a.ano, a.periodico, a.percentil)
+
+    assert h.pontuaveis
+    assert sorted(map(chave, h.pontuaveis)) == sorted(map(chave, x.pontuaveis))
+
+
+def test_lembrete_com_licencas_e_pcd():
+    texto = lembrete_artigo_y(ler_arquivo(FIXTURE_XML.read_bytes(), "a.xml"))
+    assert "1 licença" in texto and "PATERNIDADE de 10/03/2022 a 29/03/2022" in texto
+    assert "PcD: SIM" in texto
+    assert "não decide" in texto
+
+
+def test_sem_lembrete_para_html_ou_xml_sem_licenca():
+    assert lembrete_artigo_y(ler_arquivo(FIXTURE.read_bytes(), "a.html")) is None
+    vazio = b'<?xml version="1.0"?><CURRICULO-VITAE><DADOS-GERAIS PCD="NAO"/></CURRICULO-VITAE>'
+    assert lembrete_artigo_y(ler_arquivo(vazio, "a.xml")) is None
+
+
+def test_lembrete_com_duas_licencas_e_data_ausente_sem_pcd():
+    xml = (
+        b'<?xml version="1.0"?><CURRICULO-VITAE><DADOS-GERAIS><LICENCAS>'
+        b'<LICENCA TIPO-LICENCA="MATERNIDADE" DATA-INICIO-LICENCA="01012024" DATA-FIM-LICENCA=""/>'
+        b'<LICENCA TIPO-LICENCA="ADOCAO" DATA-INICIO-LICENCA="02022025" DATA-FIM-LICENCA="03032025"/>'
+        b"</LICENCAS></DADOS-GERAIS></CURRICULO-VITAE>"
+    )
+    texto = lembrete_artigo_y(ler_arquivo(xml, "a.xml"))
+    assert "2 licenças" in texto
+    assert "MATERNIDADE de 01/01/2024 a ?" in texto and "ADOCAO de 02/02/2025 a 03/03/2025" in texto
+    assert "PcD" not in texto
