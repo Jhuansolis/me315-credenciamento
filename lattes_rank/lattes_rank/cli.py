@@ -1,4 +1,4 @@
-"""Linha de comando: python -m lattes_rank ENTRADA --db BANCO.sqlite [--top 4] [--json saida.json]"""
+"""Linha de comando (ENTRADA = HTML, XML ou ZIP do Lattes): python -m lattes_rank ENTRADA --db BANCO.sqlite [--top 4] [--json saida.json]"""
 
 from __future__ import annotations
 
@@ -9,18 +9,18 @@ import sys
 from pathlib import Path
 
 from .banco import Banco
-from .parser import ler_curriculo
+from .entrada import ler_arquivo
 from .ranking import avaliar_curriculo, politica_padrao
 from .relatorio import formatar_texto, para_dict
 
-EXTENSOES = {".html", ".htm"}
+EXTENSOES = {".html", ".htm", ".xml", ".zip"}
 
 
 def _listar_entradas(entrada: Path) -> list[Path]:
     if entrada.is_dir():
         arquivos = sorted(p for p in entrada.iterdir() if p.is_file() and p.suffix.lower() in EXTENSOES)
         if not arquivos:
-            raise FileNotFoundError(f"Nenhum arquivo .html/.htm encontrado em {entrada}")
+            raise FileNotFoundError(f"Nenhum arquivo .html/.htm/.xml/.zip encontrado em {entrada}")
         return arquivos
     if entrada.is_file():
         return [entrada]
@@ -37,9 +37,9 @@ def _forcar_utf8() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lattes_rank",
-        description="Lista os periódicos de maior percentil SJR de um docente a partir do HTML público do Lattes.",
+        description="Lista os periódicos de maior percentil SJR de um docente a partir do Lattes (HTML público ou XML exportado).",
     )
-    parser.add_argument("entrada", type=Path, help="arquivo .html do currículo (ou pasta com vários .html/.htm)")
+    parser.add_argument("entrada", type=Path, help="arquivo .html, .xml ou .zip do currículo (ou pasta com vários)")
     parser.add_argument("--db", type=Path, required=True, help="banco SQLite da etapa 1 (aberto só para leitura)")
     parser.add_argument("--top", type=int, default=4, help="quantos periódicos listar (padrão: 4)")
     parser.add_argument("--json", type=Path, dest="saida_json", help="grava também o resultado completo em JSON")
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
             janela = banco.anos_com_percentil()  # a janela da nota vem do banco, não do código
             politica = politica_padrao(*janela)
             resultados = [
-                avaliar_curriculo(ler_curriculo(p), banco, politica, janela, top_n=args.top) for p in entradas
+                avaliar_curriculo(ler_arquivo(p), banco, politica, janela, top_n=args.top) for p in entradas
             ]
         texto = ("\n" + "=" * 100 + "\n").join(formatar_texto(r) for r in resultados)
         if args.saida_json:

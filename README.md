@@ -1,6 +1,6 @@
 # ME315 — Sistema de Credenciamento Docente (PPGE)
 
-Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite** que lê o currículo Lattes (HTML) de um docente, cruza os artigos com o SJR (Scimago) de 2022–2025 e calcula se ele atende às regras de credenciamento.
+Projeto final da disciplina ME315. Aplicação em **Python + Streamlit + SQLite** que lê o currículo Lattes de um docente (HTML da página pública ou XML exportado por ele), cruza os artigos com o SJR (Scimago) de 2022–2025 e calcula se ele atende às regras de credenciamento.
 
 **Entrega:** 3 de dezembro de 2026
 
@@ -36,13 +36,13 @@ cd lattes_rank && python -m pytest      # etapa 2: parser e banco
 ## Estrutura
 
 ```
-app.py                interface Streamlit (upload do Lattes, Artigo Y, seleção e nota)
+app.py                interface Streamlit (upload do Lattes em HTML/XML/ZIP, Artigo Y, seleção e nota)
 src/
   regras.py           motor de regras: nota (Artigo X), janela de artigos (Artigo Y), pré-seleção
-  integracao.py       liga o HTML do Lattes e o banco SCImago ao motor de regras
+  integracao.py       liga o Lattes (HTML ou XML) e o banco SCImago ao motor de regras
 sql/schema.sql        definição das tabelas
 scimago_etl/          etapa 1: CSVs do SJR -> banco SQLite (scimago.db é versionado)
-lattes_rank/          etapa 2: HTML do Lattes -> artigos com percentil SJR
+lattes_rank/          etapa 2: Lattes (HTML ou XML) -> artigos com percentil SJR
 tests/                testes com pytest
 docs/                 decisões, perguntas ao professor e especificações
 ```
@@ -59,6 +59,8 @@ Resumo; o detalhe e as decisões estão em
   +24 meses por licença parental, +24 meses (uma única vez) para PcD, e + os meses de licença
   médica. Somam-se os meses e arredonda-se para cima em anos. A nota do periódico não muda.
 - Artigos duplicados no Lattes contam uma vez. Nenhum dado do usuário é gravado.
+- Com o XML, as licenças e o PcD registrados no Lattes aparecem como lembrete no Artigo Y; os
+  campos continuam sendo preenchidos pelo docente.
 
 ## Deploy no Streamlit Cloud
 
@@ -68,7 +70,8 @@ Resumo; o detalhe e as decisões estão em
 3. Em *Advanced settings*, escolher Python 3.12. O app pede uma senha antes do cálculo: sem
    configuração ela é `1234`; para trocar, coloque `senha = "..."` em *Secrets*.
 4. Abrir o link gerado, enviar o HTML da fixture (`lattes_rank/tests/fixtures/artigos_completos.html`)
-   e conferir a nota.
+   e conferir a nota. O XML da fixture (`artigos_completos.xml`, cabeçalho fictício) deve dar a mesma
+   nota e mostrar o lembrete de licença no painel do Artigo Y.
 
 ## Etapa 2 — ranking de periódicos a partir do Lattes (`lattes_rank/`)
 

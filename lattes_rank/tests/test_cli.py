@@ -79,3 +79,19 @@ def test_cli_erros_sao_mensagens_e_nao_tracebacks(caso, caminho_banco, tmp_path,
     capturado = capsys.readouterr()
     assert capturado.err.startswith("Erro: ") and "Traceback" not in capturado.err
     assert capturado.out == ""
+
+
+def test_cli_le_xml_com_o_mesmo_top_do_html(caminho_banco, tmp_path):
+    def top(entrada):
+        saida = tmp_path / f"{entrada.suffix}.json"
+        assert main([str(entrada), "--db", str(caminho_banco), "--json", str(saida)]) == 0
+        return [l["periodico"] for l in json.loads(saida.read_text(encoding="utf-8"))["top"]]
+
+    assert top(FIXTURE.with_suffix(".xml")) == top(FIXTURE)
+
+
+def test_cli_xml_invalido_sai_com_codigo_2(caminho_banco, tmp_path, capsys):
+    ruim = tmp_path / "ruim.xml"
+    ruim.write_bytes(b'<?xml version="1.0"?><outra-coisa/>')
+    assert main([str(ruim), "--db", str(caminho_banco)]) == 2
+    assert "não é um currículo Lattes" in capsys.readouterr().err

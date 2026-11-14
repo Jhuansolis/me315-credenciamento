@@ -155,7 +155,8 @@ Resultado: Nota 1,42 ≥ 1,25 → APTO   (contribuição de cada artigo)
   memória de cálculo visível; regras alteráveis mudando parâmetros ou uma função pequena;
   app no ar no Streamlit Cloud.
 - **Não-objetivos:** login, perfis distintos docente/comissão, histórico, fila de pedidos,
-  comprovação de licenças, upload de XML, casamento de periódicos por nome.
+  comprovação de licenças, casamento de periódicos por nome. (O upload de XML saiu desta lista:
+  ver [2026-11-14-upload-xml-lattes-design.md](2026-11-14-upload-xml-lattes-design.md).)
 - **Anti-objetivos (seria falha mesmo funcionando):** regras espalhadas pelo `app.py`;
   números mágicos fora de `ParametrosRegras`; nota que muda quando a janela de artigos é
   ampliada (a nota do periódico é sempre 2022–2025); resultado sem explicação de por que um
