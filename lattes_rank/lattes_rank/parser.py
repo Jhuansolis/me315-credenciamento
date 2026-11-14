@@ -29,6 +29,15 @@ class Artigo:
     doi: str | None
 
 
+@dataclass(frozen=True)
+class Licenca:
+    """Licença registrada no XML do Lattes (datas em DD/MM/AAAA)."""
+
+    tipo: str
+    inicio: str | None
+    fim: str | None
+
+
 @dataclass
 class Curriculo:
     arquivo: str
@@ -37,6 +46,9 @@ class Curriculo:
     data_atualizacao: str | None
     artigos: list[Artigo] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)
+    # Só o XML traz estes dois; do HTML ficam vazios. Servem de lembrete no Artigo Y.
+    licencas: list[Licenca] = field(default_factory=list)
+    pcd: str | None = None  # valor bruto do atributo PCD (ex.: "SIM")
 
 
 def decodificar_html(dados: bytes) -> str:
